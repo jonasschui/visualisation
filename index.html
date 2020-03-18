@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<html>
+  <head>
+    <style>
+      .axis {
+        font-size: 10px;
+      }
+      .axis path {
+        fill: none;
+        stroke: #000000;
+      }
+      .axis .tick line {
+        stroke: #000;
+      }
+        
+        .states {
+            fill: #ccc;
+            stroke: #fff;
+        }
+  
+    </style>
+  </head>
+  <body>
+   
+ 
+    <script src="https://d3js.org/d3.v3.js"></script>
+    <script src="scatter.js"></script>
+    <script src="brush.js"></script>
+    <script src="symbol_map.js"></script>
+    <script src="miso.ds.deps.min.0.4.1.js"></script>
+    <script src="https://d3js.org/topojson.v1.min.js"></script>
+    <script src="https://d3js.org/queue.v1.min.js"></script>
+
+  
+    <script>
+        
+        /* create the SVG object and call it VIS */
+        var Vis = {};
+        Vis.data = new Array();
+    
+        //http://bl.ocks.org/mbostock/4342045
+        var width = 960,
+        height = 500;
+        var data;
+        
+        var json_file = "pics5.json";
+
+        var svg = d3.select("body").append("svg")
+        .attr("width", width)
+        .attr("height", height);
+        
+        var mapgroup = svg.append("g")
+        ;
+        
+        //Define map projection
+        var projection = d3.geo.mercator()
+            .translate([700, 230])
+            .scale([75]);
+        
+        /* https://d3js.org/us-10m.v1.json */
+        var path = d3.geo.path()
+            .projection(projection);
+        
+        queue()
+        .defer(d3.json, "countries.json")
+        .await(ready);
+        
+        /* load in json that contains the information per country */
+        function ready(error, world) {
+            
+            mapgroup.append("path")
+            /* maintain css of states class */
+            .attr("class", "states")
+            .datum(topojson.feature(world, world.objects.countries))
+            .attr("d", path);
+            
+            
+            loadJson(json_file);
+        }
+
+
+      /* Function that builds the different plots within the svg object */
+      function createDiagram() {
+
+          var sgroup = svg.append("g")
+          .attr("transform", "translate(50, 0)")
+          
+          /* insert the scatterplot */
+          var scatter = d3.chart.scatter()
+          scatter.data(Vis.data)
+          scatter(sgroup)
+          
+          /* insert the symbol map */
+          var symbol_map = d3.chart.symbol_map()
+          symbol_map.data(Vis.data)
+          symbol_map(mapgroup)
+          
+          
+          // brush selection time bar */
+          var bgroup = svg.append("g")
+          .attr("transform", "translate(100, 430)")
+          var brush = d3.chart.brush()
+          brush
+          .data(Vis.data)
+          .width(800)
+          brush(bgroup)
+          
+          brush.on("filter", function(filtered) {
+                   scatter.data(filtered);
+                   scatter.update();
+                   symbol_map.data(filtered)
+                   symbol_map.update();
+                   })
+                   
+          scatter.on("hover", function(hovered) {
+                              brush.highlight(hovered)
+                              symbol_map.highlight(hovered)
+                              })
+
+        symbol_map.on("hover", function(hovered) {
+          scatter.highlight(hovered)
+          brush.highlight(hovered)
+        })
+
+
+      }
+    
+      function loadJson(file_name) {
+          d3.json(file_name, function(error, file_data) {
+                  Vis.data = file_data;
+                  
+                  Vis.data.forEach(function(d) {
+                               d.created *= 1000;
+					  		   d.created_us *= 1000;
+                  });
+                  createDiagram();
+                  });
+          
+                  
+      }
+   
+
+    </script>
+
+  </body>
+</html>
